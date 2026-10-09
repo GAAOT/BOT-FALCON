@@ -1,21 +1,4 @@
 const { Client, GatewayIntentBits, REST, Routes, SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, ChannelType, PermissionFlagsBits } = require('discord.js');
-const mongoose = require('mongoose');
-
-// الاتصال بقاعدة البيانات MongoDB
-if (process.env.MONGO_URI) {
-  mongoose.connect(process.env.MONGO_URI)
-    .then(() => console.log('تم الاتصال بقاعدة البيانات (MongoDB) بنجاح!'))
-    .catch((err) => console.error('خطأ في الاتصال بقاعدة البيانات:', err));
-}
-
-// نموذج تخزين إعدادات السيرفرات (يشمل فئة وقناة رتبة الدعم الفني)
-const guildSchema = new mongoose.Schema({
-  guildId: { type: String, required: true, unique: true },
-  prefix: { type: String, default: '!' },
-  ticketCategory: { type: String, default: null },
-  supportRole: { type: String, default: null }
-});
-const GuildModel = mongoose.model('GuildSetting', guildSchema);
 
 const client = new Client({
   intents: [
@@ -26,25 +9,28 @@ const client = new Client({
   ]
 });
 
-// قائمة الأوامر (سلاش) مع إضافة اختيار رتبة الدعم
 const commands = [
   new SlashCommandBuilder()
     .setName('ping')
     .setDescription('فحص سرعة استجابة البوت'),
   new SlashCommandBuilder()
     .setName('ticket-setup')
-    .setDescription('إرسال رسالة زر فتح التذاكر وتحديد الإعدادات')
-    .addCategoryChannelOption(option =>
+    .setDescription('إرسال رسالة زر فتح التذاكر')
+    .addChannelOption(option =>
       option.setName('category')
-        .setDescription('القسم (Category) الذي ستفتح فيه رومات التذاكر')
+        .setDescription('القسم الذي ستفتح فيه رومات التذاكر')
+        .addChannelTypes(ChannelType.GuildCategory)
         .setRequired(true)
     )
     .addRoleOption(option =>
       option.setName('support_role')
-        .setDescription('رتبة الإدارة أو الدعم الفني التي تستطيع رؤية التذاكر')
+        .setDescription('رتبة الإدارة أو الدعم الفني')
         .setRequired(true)
     )
 ].map(command => command.toJSON());
+
+// تخزين مؤقت لإعدادات التذاكر في الذاكرة
+const ticketSettings = new Map();
 
 client.once('ready', async () => {
   console.log(`البوت أونلاين وجاهز باسم: ${client.user.tag}`);
@@ -63,7 +49,6 @@ client.once('ready', async () => {
 });
 
 client.on('interactionCreate', async interaction => {
-  // 1. التعامل مع الأوامر
   if (interaction.isChatInputCommand()) {
     if (interaction.commandName === 'ping') {
       const latency = Date.now() - interaction.createdTimestamp;
@@ -78,15 +63,11 @@ client.on('interactionCreate', async interaction => {
       const category = interaction.options.getChannel('category');
       const supportRole = interaction.options.getRole('support_role');
 
-      // حفظ الإعدادات في قاعدة البيانات لكل سيرفر
-      await GuildModel.findOneAndUpdate(
-        { guildId: interaction.guild.id },
-        { 
-          ticketCategory: category.id,
-          supportRole: supportRole.id 
-        },
-        { upsert: true, new: true }
-      );
+      // حفظ الإعدادات في الذاكرة مباشرة للسيرفر الحالي
+      ticketSettings.set(interaction.guild.id, {
+        categoryId: category.id,
+        supportRoleId: supportRole.id
+      });
 
       const embed = new EmbedBuilder()
         .setTitle('🎫 نظام الدعم الفني والتذاكر')
@@ -102,19 +83,17 @@ client.on('interactionCreate', async interaction => {
           .setEmoji('🎫')
       );
 
-      await interaction.reply({ content: 'تم إعداد لوحة التذاكر وحفظ رتبة الإدارة بنجاح!', ephemeral: true });
+      await interaction.reply({ content: 'تم إعداد لوحة التذاكر بنجاح!', ephemeral: true });
       await interaction.channel.send({ embeds: [embed], components: [row] });
     }
   }
 
-  // 2. التعامل مع الأزرار
   if (interaction.isButton()) {
     if (interaction.customId === 'create_ticket') {
-      const guildData = await GuildModel.findOne({ guildId: interaction.guild.id });
-      const categoryId = guildData ? guildData.ticketCategory : null;
-      const supportRoleId = guildData ? guildData.supportRole : null;
+      const settings = ticketSettings.get(interaction.guild.id);
+      const categoryId = settings ? settings.categoryId : null;
+      const supportRoleId = settings ? settings.supportRoleId : null;
 
-      // منع فتح أكثر من تذكرة لنفس المستخدم
       const existingChannel = interaction.guild.channels.cache.find(
         c => c.name === `ticket-${interaction.user.username.toLowerCase()}`
       );
@@ -124,23 +103,21 @@ client.on('interactionCreate', async interaction => {
 
       await interaction.deferReply({ ephemeral: true });
 
-      // تجهيز الصلاحيات (إخفاء الروم عن الكل، وإعطاء الصلاحية لصاحب التذكرة، ولرتبة الدعم الفني، والبوت)
       const permissionOverwrites = [
         {
-          id: interaction.guild.id, // @everyone
+          id: interaction.guild.id,
           deny: [PermissionFlagsBits.ViewChannel],
         },
         {
-          id: interaction.user.id, // صاحب التذكرة
+          id: interaction.user.id,
           allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory],
         },
         {
-          id: client.user.id, // البوت
+          id: client.user.id,
           allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ManageChannels],
         },
       ];
 
-      // إذا كانت رتبة الدعم موجودة، نعطيها صلاحية الرؤية
       if (supportRoleId) {
         permissionOverwrites.push({
           id: supportRoleId,
@@ -148,7 +125,6 @@ client.on('interactionCreate', async interaction => {
         });
       }
 
-      // إنشاء روم التذكرة
       const ticketChannel = await interaction.guild.channels.create({
         name: `ticket-${interaction.user.username}`,
         type: ChannelType.GuildText,
@@ -158,7 +134,7 @@ client.on('interactionCreate', async interaction => {
 
       const ticketEmbed = new EmbedBuilder()
         .setTitle(`تذكرة المستخدم: ${interaction.user.tag}`)
-        .setDescription(`أهلاً بك! يرجى توضيح مشكلتك وسيتم الرد عليك قريباً من قبل فريق الإدارة.\n\n<@&${supportRoleId}>`)
+        .setDescription(`أهلاً بك! يرجى توضيح مشكلتك وسيتم الرد عليك قريباً.\n\n<@&${supportRoleId}>`)
         .setColor(0x00FFCC);
 
       const closeRow = new ActionRowBuilder().addComponents(
