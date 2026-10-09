@@ -88,7 +88,6 @@ client.on('interactionCreate', async interaction => {
           .setEmoji('🎫')
       );
 
-      // إرسال لوحة التذاكر للقناة مباشرة بدون استخدام deferReply عشان ما يعلق
       await interaction.channel.send({ embeds: [embed], components: [row] });
       await interaction.reply({ content: 'تم إعداد لوحة التذاكر وإرسالها بنجاح!', ephemeral: true });
     }
@@ -144,7 +143,12 @@ client.on('interactionCreate', async interaction => {
         .setDescription(`${customMessage}\n\n<@&${supportRoleId}>`)
         .setColor(0x00FFCC);
 
-      const closeRow = new ActionRowBuilder().addComponents(
+      const actionRow = new ActionRowBuilder().addComponents(
+        new ButtonBuilder()
+          .setCustomId('claim_ticket')
+          .setLabel('استلام التذكرة')
+          .setStyle(ButtonStyle.Success)
+          .setEmoji('🙋‍♂️'),
         new ButtonBuilder()
           .setCustomId('close_ticket')
           .setLabel('إغلاق التذكرة')
@@ -152,8 +156,13 @@ client.on('interactionCreate', async interaction => {
           .setEmoji('🔒')
       );
 
-      await ticketChannel.send({ content: `${interaction.user} أهلاً بك!`, embeds: [ticketEmbed], components: [closeRow] });
+      await ticketChannel.send({ content: `${interaction.user} أهلاً بك!`, embeds: [ticketEmbed], components: [actionRow] });
       await interaction.editReply({ content: `تم فتح التذكرة بنجاح! توجه إلى هنا: ${ticketChannel}` });
+    }
+
+    if (interaction.customId === 'claim_ticket') {
+      await interaction.reply({ content: `تم استلام التذكرة بواسطة ${interaction.user}! ✅` });
+      await interaction.channel.setName(`claimed-${interaction.user.username}`).catch(() => {});
     }
 
     if (interaction.customId === 'close_ticket') {
@@ -162,6 +171,56 @@ client.on('interactionCreate', async interaction => {
         await interaction.channel.delete().catch(() => {});
       }, 3000);
     }
+  }
+});
+
+// الأوامر النصية داخل رومات التذاكر ($تكت ، $اضافة ، $حذف)
+client.on('messageCreate', async message => {
+  if (message.author.bot) return;
+
+  const args = message.content.trim().split(/ +/);
+  const command = args.shift().toLowerCase();
+
+  if (!message.channel.name.startsWith('ticket-') && !message.channel.name.startsWith('claimed-')) return;
+
+  // 1. أمر تغيير اسم التذكرة: $تكت [الاسم الجديد]
+  if (command === '$تكت') {
+    const newName = args.join('-');
+    if (!newName) {
+      return message.reply('❌ يرجى كتابة الاسم الجديد بعد الأمر. مثال: `$تكت مشكلة-شحن`');
+    }
+    try {
+      await message.channel.setName(newName);
+      message.reply(`✅ تم تغيير اسم التذكرة إلى: **${newName}**`);
+    } catch (err) {
+      message.reply('❌ حدث خطأ أثناء تغيير اسم الروم، تأكد من صلاحيات البوت.');
+    }
+  }
+
+  // 2. أمر إضافة عضو للتذكرة: $اضافة @الشخص
+  if (command === '$اضافة') {
+    const targetMember = message.mentions.members.first();
+    if (!targetMember) {
+      return message.reply('❌ يرجى منشن الشخص المراد إضافته. مثال: `$اضافة @User`');
+    }
+    try {
+      await message.channel.permissionOverwrites.edit(targetMember.id, {
+        ViewChannel: true,
+        SendMessages: true,
+        ReadMessageHistory: true
+      });
+      message.reply(`✅ تمت إضافة العضو ${targetMember} بنجاح إلى التذكرة.`);
+    } catch (err) {
+      message.reply('❌ حدث خطأ أثناء إضافة العضو.');
+    }
+  }
+
+  // 3. أمر حذف التذكرة: $حذف
+  if (command === '$حذف') {
+    message.reply('🗑️ جاري حذف التذكرة...');
+    setTimeout(async () => {
+      await message.channel.delete().catch(() => {});
+    }, 2000);
   }
 });
 
