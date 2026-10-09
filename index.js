@@ -97,7 +97,17 @@ client.on('messageCreate', async message => {
   const args = message.content.trim().split(/ +/);
   const command = args.shift().toLowerCase();
 
+  const settings = ticketSettings.get(message.guild.id);
+  const supportRoleId = settings ? settings.supportRoleId : null;
+  const hasSupportRole = supportRoleId && message.member.roles.cache.has(supportRoleId);
+  const isAdmin = message.member.permissions.has(PermissionFlagsBits.Administrator);
+
+  // أمر الفحص (مخصص للإدارة العليا فقط)
   if (command === '$فحص') {
+    if (!isAdmin) {
+      return message.reply('❌ عذراً، أمر الفحص مخصص للإدارة العليا فقط!');
+    }
+
     const targetMember = message.mentions.members.first() || message.member;
     const statsKey = `${message.guild.id}_${targetMember.id}`;
     
@@ -121,6 +131,11 @@ client.on('messageCreate', async message => {
   }
 
   if (!message.channel.name.startsWith('ticket-') && !message.channel.name.startsWith('claimed-')) return;
+
+  // التحقق من أن المستخدم يمتلك صلاحية الإدارة لاستخدام بقية الأوامر داخل التذكرة
+  if (!hasSupportRole && !isAdmin) {
+    return; // يتجاهل الأوامر إذا كانت من عضو عادي داخل التذكرة
+  }
 
   if (command === '$تكت') {
     const newName = args.join('-');
@@ -207,7 +222,6 @@ client.on('messageCreate', async message => {
   if (command === '$حذف') {
     message.reply('🗑️ جاري حذف التذكرة وسجلاتها...');
     
-    const settings = ticketSettings.get(message.guild.id);
     const logChannelId = settings ? settings.logChannelId : null;
     if (logChannelId) {
       const logChannel = message.guild.channels.cache.get(logChannelId);
@@ -346,6 +360,7 @@ client.on('interactionCreate', async interaction => {
       const actionRow = new ActionRowBuilder().addComponents(
         new ButtonBuilder()
           .setCustomId('claim_ticket')
+          .setLabel('استلاستلام التذكرة')
           .setLabel('استلام التذكرة')
           .setStyle(ButtonStyle.Success)
           .setEmoji('🙋‍♂️'),
@@ -361,7 +376,6 @@ client.on('interactionCreate', async interaction => {
     }
 
     if (interaction.customId === 'claim_ticket') {
-      // التحقق مما إذا كان المستخدم يمتلك رتبة الدعم أو صلاحية المسؤول
       const hasSupportRole = supportRoleId && interaction.member.roles.cache.has(supportRoleId);
       const isAdmin = interaction.member.permissions.has(PermissionFlagsBits.Administrator);
 
