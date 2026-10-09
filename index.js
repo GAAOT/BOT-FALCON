@@ -62,12 +62,12 @@ client.on('interactionCreate', async interaction => {
   if (interaction.isChatInputCommand()) {
     if (interaction.commandName === 'ping') {
       const latency = Date.now() - interaction.createdTimestamp;
-      await interaction.reply({ content: `Pong! 🏓 سرعة استجابة البوت: ${latency}ms`, ephemeral: true });
+      await interaction.reply({ content: `Pong! 🏓 سرعة استجابة البوت: ${latency}ms`, flags: 64 });
     }
 
     if (interaction.commandName === 'ticket-setup') {
       if (!interaction.member.permissions.has(PermissionFlagsBits.Administrator)) {
-        return interaction.reply({ content: 'عذراً، يجب أن تمتلك صلاحية المسؤول (Administrator) لاستخدام هذا الأمر.', ephemeral: true });
+        return interaction.reply({ content: 'عذراً، يجب أن تمتلك صلاحية المسؤول (Administrator) لاستخدام هذا الأمر.', flags: 64 });
       }
 
       const category = interaction.options.getChannel('category');
@@ -97,7 +97,7 @@ client.on('interactionCreate', async interaction => {
       );
 
       await interaction.channel.send({ embeds: [embed], components: [row] });
-      await interaction.reply({ content: 'تم إعداد لوحة التذاكر وإرسالها بنجاح!', ephemeral: true });
+      await interaction.reply({ content: 'تم إعداد لوحة التذاكر وإرسالها بنجاح!', flags: 64 });
     }
   }
 
@@ -108,12 +108,12 @@ client.on('interactionCreate', async interaction => {
     const customMessage = settings ? settings.customMessage : 'يرجى توضيح مشكلتك وسيتم الرد عليك قريباً.';
 
     if (interaction.customId === 'create_ticket') {
-      await interaction.deferReply({ ephemeral: true });
+      await interaction.deferReply({ flags: 64 });
 
-      // منع فتح أكثر من تذكرة للمستخدم نفسه
+      // التحقق الصحيح من وجود تذكرة مفتوحة لنفس المستخدم
       const existingChannel = interaction.guild.channels.cache.find(
         c => (c.name.startsWith('ticket-') || c.name.startsWith('claimed-')) &&
-             c.permissionOverwrites.has(interaction.user.id)
+             c.permissionOverwrites.cache.has(interaction.user.id)
       );
 
       if (existingChannel) {
@@ -175,7 +175,7 @@ client.on('interactionCreate', async interaction => {
 
     if (interaction.customId === 'claim_ticket') {
       if (interaction.channel.name.startsWith('claimed-')) {
-        return interaction.reply({ content: '❌ هذه التذكرة مستلمة بالفعل بواسطة مشرف آخر!', ephemeral: true });
+        return interaction.reply({ content: '❌ هذه التذكرة مستلمة بالفعل بواسطة مشرف آخر!', flags: 64 });
       }
 
       const usernamePart = interaction.channel.name.replace('ticket-', '');
@@ -211,7 +211,7 @@ client.on('interactionCreate', async interaction => {
           .setStyle(ButtonStyle.Secondary)
       );
 
-      await interaction.reply({ content: '⚠️ هل أنت متأكد من رغبتك في إغلاق وحذف هذه التذكرة؟', components: [confirmRow], ephemeral: true });
+      await interaction.reply({ content: '⚠️ هل أنت متأكد من رغبتك في إغلاق وحذف هذه التذكرة؟', components: [confirmRow], flags: 64 });
     }
 
     if (interaction.customId === 'confirm_close') {
