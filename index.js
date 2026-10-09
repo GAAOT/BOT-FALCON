@@ -42,43 +42,37 @@ const commands = [
 ].map(command => command.toJSON());
 
 const ticketSettings = new Map();
-// قواعد بيانات مؤقتة لتتبع الإحصائيات (الرسائل، الفويس، التذاكر المستلمة)
-const weeklyMessages = new Map(); // مفتاحها: guildId_userId
-const voiceTime = new Map();     // مفتاحها: guildId_userId (بالدقائق)
-const voiceSessions = new Map(); // لتتبع وقت دخول الفويس: guildId_userId -> timestamp
-const claimedTickets = new Map();// مفتاحها: guildId_userId -> عدد التذاكر المستلمة
+const weeklyMessages = new Map();
+const voiceTime = new Map();
+const voiceSessions = new Map();
+const claimedTickets = new Map();
 
-// دالة لحساب الوقت القادم لتصفير العداد يوم الجمعة الساعة 2:00 ليلاً بتوقيت السعودية (UTC+3)
 function scheduleWeeklyReset() {
   const now = new Date();
-  // تحويل الوقت الحالي لتوقيت السعودية (AST = UTC+3)
   const saudiTime = new Date(now.toLocaleString("en-US", { timeZone: "Asia/Riyadh" }));
   
   let target = new Date(saudiTime);
-  target.setHours(2, 0, 0, 0); // الساعة 2 ليلاً
+  target.setHours(2, 0, 0, 0);
   
-  // يوم الجمعة هو 5 (الأحد = 0، الإثنين = 1، ... الجمعة = 5)
   let dayOfWeek = saudiTime.getDay();
   let daysUntilFriday = (5 - dayOfWeek + 7) % 7;
   
   if (daysUntilFriday === 0 && saudiTime.getTime() >= target.getTime()) {
-    daysUntilFriday = 7; // إذا كان اليوم جمعة وتجاوزنا الساعة 2، ننتقل للجمعة القادمة
+    daysUntilFriday = 7;
   }
   
   target.setDate(target.getDate() + daysUntilFriday);
-  
   const diff = target.getTime() - saudiTime.getTime();
   
   setTimeout(() => {
-    weeklyMessages.clear(); // تصفير الرسائل
-    // إعادة جدولة التصفير للأسبوع القادم
+    weeklyMessages.clear();
     scheduleWeeklyReset();
   }, diff);
 }
 
 client.once('ready', async () => {
   console.log(`البوت أونلاين وجاهز باسم: ${client.user.tag}`);
-  scheduleWeeklyReset(); // بدء جدولة التصفير التلقائي
+  scheduleWeeklyReset();
 
   const rest = new REST({ version: '10' }).setToken(process.env.TOKEN);
   try {
@@ -93,7 +87,6 @@ client.once('ready', async () => {
   }
 });
 
-// تتبع الرسائل الأسبوعية للأعضاء
 client.on('messageCreate', async message => {
   if (message.author.bot || !message.guild) return;
 
@@ -101,11 +94,9 @@ client.on('messageCreate', async message => {
   const currentCount = weeklyMessages.get(msgKey) || 0;
   weeklyMessages.set(msgKey, currentCount + 1);
 
-  // الأوامر النصية داخل التذاكر وخارجها حسب الحاجة
   const args = message.content.trim().split(/ +/);
   const command = args.shift().toLowerCase();
 
-  // أمر الفحص الجديد: $فحص @الشخص
   if (command === '$فحص') {
     const targetMember = message.mentions.members.first() || message.member;
     const statsKey = `${message.guild.id}_${targetMember.id}`;
@@ -236,19 +227,15 @@ client.on('messageCreate', async message => {
   }
 });
 
-// تتبع وقت الفويس (الصوت) للأعضاء
 client.on('voiceStateUpdate', (oldState, newState) => {
   const member = newState.member;
   if (!member || member.user.bot) return;
 
   const key = `${newState.guild.id}_${member.id}`;
 
-  // دخل روم صوتي
   if (!oldState.channelId && newState.channelId) {
     voiceSessions.set(key, Date.now());
-  } 
-  // طلع من الروم الصوتي
-  else if (oldState.channelId && !newState.channelId) {
+  } else if (oldState.channelId && !newState.channelId) {
     const startTime = voiceSessions.get(key);
     if (startTime) {
       const durationMinutes = Math.floor((Date.now() - startTime) / 60000);
@@ -374,11 +361,18 @@ client.on('interactionCreate', async interaction => {
     }
 
     if (interaction.customId === 'claim_ticket') {
+      // التحقق مما إذا كان المستخدم يمتلك رتبة الدعم أو صلاحية المسؤول
+      const hasSupportRole = supportRoleId && interaction.member.roles.cache.has(supportRoleId);
+      const isAdmin = interaction.member.permissions.has(PermissionFlagsBits.Administrator);
+
+      if (!hasSupportRole && !isAdmin) {
+        return interaction.reply({ content: '❌ عذراً، هذا الزر مخصص لفريق الإدارة والدعم الفني فقط!', flags: 64 });
+      }
+
       if (interaction.channel.name.startsWith('claimed-')) {
         return interaction.reply({ content: '❌ هذه التذكرة مستلمة بالفعل بواسطة مشرف آخر!', flags: 64 });
       }
 
-      // زيادة عدد التذاكر المستلمة للمشرف
       const claimKey = `${interaction.guild.id}_${interaction.user.id}`;
       const currentClaims = claimedTickets.get(claimKey) || 0;
       claimedTickets.set(claimKey, currentClaims + 1);
