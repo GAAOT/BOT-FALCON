@@ -108,16 +108,17 @@ client.on('interactionCreate', async interaction => {
     const customMessage = settings ? settings.customMessage : 'يرجى توضيح مشكلتك وسيتم الرد عليك قريباً.';
 
     if (interaction.customId === 'create_ticket') {
+      // الرد الفوري المؤقت لمنع خطأ انتهاء المهلة من ديسكورد
+      await interaction.deferReply({ ephemeral: true });
+
       const existingChannel = interaction.guild.channels.cache.find(
         c => (c.name.startsWith('ticket-') || c.name.startsWith('claimed-')) &&
              c.permissionOverwrites.has(interaction.user.id)
       );
 
       if (existingChannel) {
-        return interaction.reply({ content: `❌ لديك تذكرة مفتوحة بالفعل ولا يمكنك فتح تذكرة أخرى: ${existingChannel}`, ephemeral: true });
+        return interaction.editReply({ content: `❌ لديك تذكرة مفتوحة بالفعل ولا يمكنك فتح تذكرة أخرى: ${existingChannel}` });
       }
-
-      await interaction.deferReply({ ephemeral: true });
 
       const existingTickets = interaction.guild.channels.cache.filter(c => c.name.startsWith('ticket-') || c.name.startsWith('claimed-'));
       let ticketNumber = existingTickets.size + 1;
@@ -205,7 +206,6 @@ client.on('interactionCreate', async interaction => {
       await interaction.message.edit({ components: [disabledRow] }).catch(() => {});
     }
 
-    // زر الإغلاق مع طلب تأكيد
     if (interaction.customId === 'close_ticket') {
       const confirmRow = new ActionRowBuilder().addComponents(
         new ButtonBuilder()
@@ -257,7 +257,6 @@ client.on('messageCreate', async message => {
 
   if (!message.channel.name.startsWith('ticket-') && !message.channel.name.startsWith('claimed-')) return;
 
-  // 1. أمر تغيير اسم التذكرة: $تكت [الاسم الجديد]
   if (command === '$تكت') {
     const newName = args.join('-');
     if (!newName) {
@@ -271,7 +270,6 @@ client.on('messageCreate', async message => {
     }
   }
 
-  // 2. أمر إضافة عضو للتذكرة: $اضافة @الشخص
   if (command === '$اضافة') {
     const targetMember = message.mentions.members.first();
     if (!targetMember) {
@@ -289,9 +287,7 @@ client.on('messageCreate', async message => {
     }
   }
 
-  // 3. أمر استدعاء صاحب التذكرة: $استدعاء
   if (command === '$استدعاء') {
-    // العثور على صاحب التذكرة من الصلاحيات (أول مستخدم لديه صلاحية رؤية الروم وليس بوتاً أو رتبة عامة)
     const overwrites = message.channel.permissionOverwrites.cache;
     let ticketOwner = null;
     
@@ -310,7 +306,6 @@ client.on('messageCreate', async message => {
     }
 
     try {
-      // محاولة إرسال رسالة خاصة (DM) لصاحب التذكرة
       await ticketOwner.send(`🔔 تم استدعاؤك في التذكرة الخاصة بك في سيرفر **${message.guild.name}**: ${message.channel}`).catch(() => {});
       message.reply(`📢 تم استدعاء ${ticketOwner} بنجاح (وتم إرسال تنبيه له بالخاص إن أمكن).`);
     } catch (err) {
@@ -318,27 +313,19 @@ client.on('messageCreate', async message => {
     }
   }
 
-  // 4. أمر غلق الروم (منع الأعضاء من الكتابة): $غلق
   if (command === '$غلق') {
-    const settings = ticketSettings.get(message.guild.id);
-    const supportRoleId = settings ? settings.supportRoleId : null;
-
     try {
-      // منع الجميع (@everyone) من الكتابة، مع إبقاء الصلاحيات للإدارة والدعم
       await message.channel.permissionOverwrites.edit(message.guild.id, {
         SendMessages: false
       });
-
       message.reply('🔒 تم إغلاق التذكرة مؤقتاً. لا يمكن لأحد الكتابة فيها حالياً.');
     } catch (err) {
       message.reply('❌ حدث خطأ أثناء قفل الروم.');
     }
   }
 
-  // 5. أمر فتح الروم مجدداً: $فتح
   if (command === '$فتح') {
     try {
-      // إعادة السماح بإرسال الرسائل للمستخدمين في الروم
       const overwrites = message.channel.permissionOverwrites.cache;
       for (const [id, overwrite] of overwrites) {
         const member = message.guild.members.cache.get(id);
@@ -346,14 +333,12 @@ client.on('messageCreate', async message => {
           await message.channel.permissionOverwrites.edit(id, { SendMessages: true });
         }
       }
-
       message.reply('🔓 تم فتح التذكرة مرة أخرى، يمكن للجميع الكتابة الآن.');
     } catch (err) {
       message.reply('❌ حدث خطأ أثناء فتح الروم.');
     }
   }
 
-  // 6. أمر حذف التذكرة: $حذف
   if (command === '$حذف') {
     message.reply('🗑️ جاري حذف التذكرة وسجلاتها...');
     
