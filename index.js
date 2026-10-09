@@ -158,4 +158,10 @@ client.on('interactionCreate', async interaction => {
     if (interaction.customId === 'close_ticket') {
       await interaction.reply({ content: 'جاري إغلاق التذكرة وحذف الغرفة...' });
       setTimeout(async () => {
-        await interaction.channel.delete
+        await interaction.channel.delete().catch(() => {});
+      }, 3000);
+    }
+  }
+});
+
+client.login(process.env.TOKEN);
