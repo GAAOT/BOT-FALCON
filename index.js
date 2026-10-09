@@ -15,7 +15,7 @@ const commands = [
     .setDescription('فحص سرعة استجابة البوت'),
   new SlashCommandBuilder()
     .setName('ticket-setup')
-    .setDescription('إرسال رسالة زر فتح التذاكر')
+    .setDescription('إرسال رسالة زر فتح التذاكر وتخصيص رسالة التذكرة')
     .addChannelOption(option =>
       option.setName('category')
         .setDescription('القسم الذي ستفتح فيه رومات التذاكر')
@@ -27,9 +27,13 @@ const commands = [
         .setDescription('رتبة الإدارة أو الدعم الفني')
         .setRequired(true)
     )
+    .addStringOption(option =>
+      option.setName('message')
+        .setDescription('الرسالة التي ستظهر داخل التذكرة للمستخدمين')
+        .setRequired(true)
+    )
 ].map(command => command.toJSON());
 
-// تخزين مؤقت لإعدادات التذاكر في الذاكرة
 const ticketSettings = new Map();
 
 client.once('ready', async () => {
@@ -62,11 +66,12 @@ client.on('interactionCreate', async interaction => {
 
       const category = interaction.options.getChannel('category');
       const supportRole = interaction.options.getRole('support_role');
+      const customMessage = interaction.options.getString('message');
 
-      // حفظ الإعدادات في الذاكرة مباشرة للسيرفر الحالي
       ticketSettings.set(interaction.guild.id, {
         categoryId: category.id,
-        supportRoleId: supportRole.id
+        supportRoleId: supportRole.id,
+        customMessage: customMessage
       });
 
       const embed = new EmbedBuilder()
@@ -90,18 +95,19 @@ client.on('interactionCreate', async interaction => {
 
   if (interaction.isButton()) {
     if (interaction.customId === 'create_ticket') {
+      await interaction.deferReply({ ephemeral: true });
+
       const settings = ticketSettings.get(interaction.guild.id);
       const categoryId = settings ? settings.categoryId : null;
       const supportRoleId = settings ? settings.supportRoleId : null;
+      const customMessage = settings ? settings.customMessage : 'يرجى توضيح مشكلتك وسيتم الرد عليك قريباً.';
 
       const existingChannel = interaction.guild.channels.cache.find(
         c => c.name === `ticket-${interaction.user.username.toLowerCase()}`
       );
       if (existingChannel) {
-        return interaction.reply({ content: `لديك تذكرة مفتوحة بالفعل: ${existingChannel}`, ephemeral: true });
+        return interaction.editReply({ content: `لديك تذكرة مفتوحة بالفعل: ${existingChannel}` });
       }
-
-      await interaction.deferReply({ ephemeral: true });
 
       const permissionOverwrites = [
         {
@@ -134,7 +140,7 @@ client.on('interactionCreate', async interaction => {
 
       const ticketEmbed = new EmbedBuilder()
         .setTitle(`تذكرة المستخدم: ${interaction.user.tag}`)
-        .setDescription(`أهلاً بك! يرجى توضيح مشكلتك وسيتم الرد عليك قريباً.\n\n<@&${supportRoleId}>`)
+        .setDescription(`${customMessage}\n\n<@&${supportRoleId}>`)
         .setColor(0x00FFCC);
 
       const closeRow = new ActionRowBuilder().addComponents(
@@ -152,10 +158,4 @@ client.on('interactionCreate', async interaction => {
     if (interaction.customId === 'close_ticket') {
       await interaction.reply({ content: 'جاري إغلاق التذكرة وحذف الغرفة...' });
       setTimeout(async () => {
-        await interaction.channel.delete().catch(() => {});
-      }, 3000);
-    }
-  }
-});
-
-client.login(process.env.TOKEN);
+        await interaction.channel.delete
