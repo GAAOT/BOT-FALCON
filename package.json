@@ -1,1 +1,15 @@
+{
+  "name": "discord-multi-server-bot",
+  "version": "1.0.0",
+  "description": "Multi-server Discord bot system",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "discord.js": "^14.14.1",
+    "mongoose": "^8.2.0",
+    "dotenv": "^16.4.5"
+  }
+}
 
