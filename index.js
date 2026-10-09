@@ -108,9 +108,9 @@ client.on('interactionCreate', async interaction => {
     const customMessage = settings ? settings.customMessage : 'يرجى توضيح مشكلتك وسيتم الرد عليك قريباً.';
 
     if (interaction.customId === 'create_ticket') {
-      // الرد الفوري المؤقت لمنع خطأ انتهاء المهلة من ديسكورد
       await interaction.deferReply({ ephemeral: true });
 
+      // منع فتح أكثر من تذكرة للمستخدم نفسه
       const existingChannel = interaction.guild.channels.cache.find(
         c => (c.name.startsWith('ticket-') || c.name.startsWith('claimed-')) &&
              c.permissionOverwrites.has(interaction.user.id)
@@ -120,14 +120,7 @@ client.on('interactionCreate', async interaction => {
         return interaction.editReply({ content: `❌ لديك تذكرة مفتوحة بالفعل ولا يمكنك فتح تذكرة أخرى: ${existingChannel}` });
       }
 
-      const existingTickets = interaction.guild.channels.cache.filter(c => c.name.startsWith('ticket-') || c.name.startsWith('claimed-'));
-      let ticketNumber = existingTickets.size + 1;
-      
-      while (interaction.guild.channels.cache.some(c => c.name === `ticket-${ticketNumber}` || c.name === `claimed-${ticketNumber}`)) {
-        ticketNumber++;
-      }
-
-      const channelName = `ticket-${ticketNumber}`;
+      const channelName = `ticket-${interaction.user.username.toLowerCase()}`;
 
       const permissionOverwrites = [
         {
@@ -159,7 +152,7 @@ client.on('interactionCreate', async interaction => {
       });
 
       const ticketEmbed = new EmbedBuilder()
-        .setTitle(`تذكرة رقم: #${ticketNumber} | ${interaction.user.tag}`)
+        .setTitle(`تذكرة المستخدم: ${interaction.user.tag}`)
         .setDescription(`${customMessage}\n\n<@&${supportRoleId}>`)
         .setColor(0x00FFCC);
 
@@ -185,9 +178,9 @@ client.on('interactionCreate', async interaction => {
         return interaction.reply({ content: '❌ هذه التذكرة مستلمة بالفعل بواسطة مشرف آخر!', ephemeral: true });
       }
 
-      const currentName = interaction.channel.name.replace('ticket-', '');
+      const usernamePart = interaction.channel.name.replace('ticket-', '');
       await interaction.reply({ content: `✅ تم استلام التذكرة بواسطة ${interaction.user}!` });
-      await interaction.channel.setName(`claimed-${currentName}`).catch(() => {});
+      await interaction.channel.setName(`claimed-${usernamePart}`).catch(() => {});
 
       const disabledRow = new ActionRowBuilder().addComponents(
         new ButtonBuilder()
@@ -248,7 +241,7 @@ client.on('interactionCreate', async interaction => {
   }
 });
 
-// الأوامر النصية داخل رومات التذاكر
+// الأوامر النصية داخل التذاكر
 client.on('messageCreate', async message => {
   if (message.author.bot) return;
 
@@ -307,7 +300,7 @@ client.on('messageCreate', async message => {
 
     try {
       await ticketOwner.send(`🔔 تم استدعاؤك في التذكرة الخاصة بك في سيرفر **${message.guild.name}**: ${message.channel}`).catch(() => {});
-      message.reply(`📢 تم استدعاء ${ticketOwner} بنجاح (وتم إرسال تنبيه له بالخاص إن أمكن).`);
+      message.reply(`📢 تم استدعاء ${ticketOwner} بنجاح.`);
     } catch (err) {
       message.reply(`📢 تنبيه إلى ${ticketOwner}!`);
     }
@@ -363,3 +356,4 @@ client.on('messageCreate', async message => {
 });
 
 client.login(process.env.TOKEN);
+ 
