@@ -64,6 +64,9 @@ client.on('interactionCreate', async interaction => {
         return interaction.reply({ content: 'عذراً، يجب أن تمتلك صلاحية المسؤول (Administrator) لاستخدام هذا الأمر.', ephemeral: true });
       }
 
+      // تأخير الاستجابة لمنع خطأ انتهاء الوقت من ديسكورد
+      await interaction.deferReply({ ephemeral: true });
+
       const category = interaction.options.getChannel('category');
       const supportRole = interaction.options.getRole('support_role');
       const customMessage = interaction.options.getString('message');
@@ -88,8 +91,8 @@ client.on('interactionCreate', async interaction => {
           .setEmoji('🎫')
       );
 
-      await interaction.reply({ content: 'تم إعداد لوحة التذاكر بنجاح!', ephemeral: true });
       await interaction.channel.send({ embeds: [embed], components: [row] });
+      await interaction.editReply({ content: 'تم إعداد لوحة التذاكر وإرسالها بنجاح!' });
     }
   }
 
