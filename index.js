@@ -102,7 +102,6 @@ client.on('messageCreate', async message => {
   const hasSupportRole = supportRoleId && message.member.roles.cache.has(supportRoleId);
   const isAdmin = message.member.permissions.has(PermissionFlagsBits.Administrator);
 
-  // أمر الفحص (مخصص للإدارة العليا فقط)
   if (command === '$فحص') {
     if (!isAdmin) {
       return message.reply('❌ عذراً، أمر الفحص مخصص للإدارة العليا فقط!');
@@ -132,9 +131,8 @@ client.on('messageCreate', async message => {
 
   if (!message.channel.name.startsWith('ticket-') && !message.channel.name.startsWith('claimed-')) return;
 
-  // التحقق من أن المستخدم يمتلك صلاحية الإدارة لاستخدام بقية الأوامر داخل التذكرة
   if (!hasSupportRole && !isAdmin) {
-    return; // يتجاهل الأوامر إذا كانت من عضو عادي داخل التذكرة
+    return;
   }
 
   if (command === '$تكت') {
@@ -310,6 +308,7 @@ client.on('interactionCreate', async interaction => {
     const customMessage = settings ? settings.customMessage : 'يرجى توضيح مشكلتك وسيتم الرد عليك قريباً.';
 
     if (interaction.customId === 'create_ticket') {
+      // استجابة فورية مؤقتة لمنع خطأ انتهاء المهلة من ديسكورد
       await interaction.deferReply({ flags: 64 });
 
       const existingChannel = interaction.guild.channels.cache.find(
@@ -360,7 +359,6 @@ client.on('interactionCreate', async interaction => {
       const actionRow = new ActionRowBuilder().addComponents(
         new ButtonBuilder()
           .setCustomId('claim_ticket')
-          .setLabel('استلاستلام التذكرة')
           .setLabel('استلام التذكرة')
           .setStyle(ButtonStyle.Success)
           .setEmoji('🙋‍♂️'),
