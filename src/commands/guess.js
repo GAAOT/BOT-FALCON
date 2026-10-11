@@ -1,0 +1,2 @@
+const {cmd}=require('../utils/commandTools');
+module.exports=cmd('guess','خمن رقم من 1 إلى 10 واربح Cash',d=>d.addIntegerOption(o=>o.setName('number').setDescription('توقعك').setMinValue(1).setMaxValue(10).setRequired(true)),async i=>{const n=i.options.getInteger('number'),x=1+Math.floor(Math.random()*10);if(n===x){const u=await require('../utils/commandTools').getUser(i.user.id);u.credits+=100;await u.save();return i.reply(`🎯 صحيح! الرقم **${x}** وربحت **100 Cash**.`);}await i.reply(`قريب! الرقم كان **${x}**. جرّب مرة ثانية.`);});

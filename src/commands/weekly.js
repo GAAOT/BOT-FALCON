@@ -1,0 +1,2 @@
+const {cmd,getUser}=require('../utils/commandTools');
+module.exports=cmd('weekly','استلم مكافأة أسبوعية',null,async i=>{const u=await getUser(i.user.id),wait=604800000-(Date.now()-(u.lastWeekly?.getTime()||0));if(wait>0)return i.reply({content:`⏳ المكافأة الأسبوعية متاحة بعد ${Math.ceil(wait/86400000)} يوم.`,ephemeral:true});const amount=1800+Math.floor(Math.random()*1201);u.credits+=amount;u.lastWeekly=new Date();await u.save();await i.reply(`💎 استلمت **${amount} Cash**! رصيدك الآن **${u.credits} Cash**.`);});

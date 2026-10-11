@@ -1,0 +1,3 @@
+const {cmd,getUser}=require('../utils/commandTools');
+const jobs=['مطور بوتات','مصمم شعارات','حارس سيرفر','مبرمج ألعاب','مدير مجتمع'];
+module.exports=cmd('work','اعمل لتحصل على Cash',null,async i=>{const u=await getUser(i.user.id),wait=3600000-(Date.now()-(u.lastWork?.getTime()||0));if(wait>0)return i.reply({content:`⏳ تقدر تشتغل بعد ${Math.ceil(wait/60000)} دقيقة.`,ephemeral:true});const n=100+Math.floor(Math.random()*301);u.credits+=n;u.lastWork=new Date();await u.save();await i.reply(`🛠️ اشتغلت كـ **${jobs[Math.floor(Math.random()*jobs.length)]}** وربحت **${n} Cash**.`);});

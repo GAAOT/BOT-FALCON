@@ -1,0 +1,2 @@
+const {cmd,getUser}=require('../utils/commandTools');
+module.exports=cmd('daily','استلم مكافأة يومية من Cash',null,async i=>{const u=await getUser(i.user.id),now=Date.now(),wait=86400000-(now-(u.lastDaily?.getTime()||0));if(wait>0)return i.reply({content:`⏳ ارجع بعد ${Math.ceil(wait/3600000)} ساعة تقريباً.`,ephemeral:true});const amount=250+Math.floor(Math.random()*251);u.credits+=amount;u.lastDaily=new Date();await u.save();await i.reply(`🎁 استلمت **${amount} Cash**! رصيدك الآن **${u.credits} Cash**.`);});

@@ -1,0 +1,2 @@
+const {cmd,getUser,EmbedBuilder}=require('../utils/commandTools');const names={shield:'درع حماية',boost:'تعزيز نقاط',retry:'محاولة إضافية',badge:'شارة مميزة'};
+module.exports=cmd('inventory','عرض حقيبتك',null,async i=>{const u=await getUser(i.user.id);const counts={};for(const x of u.inventory)counts[x]=(counts[x]||0)+1;const desc=Object.keys(counts).length?Object.entries(counts).map(([k,n])=>`• ${names[k]||k} × ${n}`).join('\n'):'حقيبتك فارغة. استخدم /shop.';await i.reply({embeds:[new EmbedBuilder().setColor(0x1abc9c).setTitle('🎒 حقيبتك').setDescription(desc)]});});

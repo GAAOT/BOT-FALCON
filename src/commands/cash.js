@@ -1,0 +1,2 @@
+const {cmd,getUser,EmbedBuilder}=require('../utils/commandTools');
+module.exports=cmd('cash','عرض رصيد Cash العالمي',d=>d.addUserOption(o=>o.setName('user').setDescription('العضو').setRequired(false)),async i=>{const u=i.options.getUser('user')||i.user;const x=await getUser(u.id);await i.reply({embeds:[new EmbedBuilder().setColor(0x2ecc71).setTitle('💵 محفظة Cash').setDescription(`${u}\nالرصيد العالمي: **${x.credits.toLocaleString()} Cash**`).setThumbnail(u.displayAvatarURL())]});});
