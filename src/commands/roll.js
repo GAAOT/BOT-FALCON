@@ -1,2 +1,0 @@
-const {cmd}=require('../utils/commandTools');
-module.exports=cmd('roll','ارمِ نرداً',d=>d.addIntegerOption(o=>o.setName('sides').setDescription('عدد الأوجه').setMinValue(2).setMaxValue(1000).setRequired(false)),async i=>{const s=i.options.getInteger('sides')||6;await i.reply(`🎲 النتيجة: **${1+Math.floor(Math.random()*s)}** من ${s}.`);});

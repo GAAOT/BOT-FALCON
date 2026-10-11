@@ -1,3 +1,0 @@
-const {cmd,EmbedBuilder}=require('../utils/commandTools');
-const items=[['shield','درع حماية مؤقت',500],['boost','تعزيز نقاط الألعاب',350],['retry','محاولة إضافية',200],['badge','شارة مميزة',1200]];
-module.exports=cmd('shop','عرض متجر العناصر',null,async i=>{await i.reply({embeds:[new EmbedBuilder().setColor(0x9b59b6).setTitle('🛒 متجر FALCON').setDescription(items.map(([id,n,p])=>`**${n}** — ${p} Cash\nالمعرّف: \`${id}\``).join('\n\n')).setFooter({text:'استخدم /buy لشراء عنصر'})]});});

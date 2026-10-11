@@ -1,6 +1,0 @@
-const { SlashCommandBuilder, PermissionFlagsBits }=require('discord.js');const {sendLog,embed}=require('../utils/helpers');
-module.exports={data:new SlashCommandBuilder().setName('timeout').setDescription('إعطاء عضو تايم لمدة محددة بالدقائق').setDefaultMemberPermissions(PermissionFlagsBits.ModerateMembers).addUserOption(o=>o.setName('user').setDescription('العضو').setRequired(true)).addIntegerOption(o=>o.setName('minutes').setDescription('المدة بالدقائق (1 إلى 40320)').setRequired(true).setMinValue(1).setMaxValue(40320)).addStringOption(o=>o.setName('reason').setDescription('سبب التايم').setRequired(false)),async execute(i){
- const u=i.options.getUser('user'),mins=i.options.getInteger('minutes'),reason=i.options.getString('reason')||'لم يتم تحديد سبب';const m=await i.guild.members.fetch(u.id).catch(()=>null);
- if(!m||!m.moderatable)return i.reply({content:'لا أستطيع إعطاء هذا العضو تايم. تحقق من ترتيب الرتب.',ephemeral:true});
- await m.timeout(mins*60000,`${i.user.tag}: ${reason}`);await sendLog(i.guild,`تايم لـ ${u.tag} لمدة ${mins} دقيقة بواسطة ${i.user.tag}. السبب: ${reason}`);await i.reply({embeds:[embed('تم إعطاء التايم ⏱️',`العضو: ${u}\nالمدة: **${mins} دقيقة**\nالسبب: ${reason}`)],ephemeral:true});
-}};

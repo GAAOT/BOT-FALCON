@@ -1,2 +1,0 @@
-const {cmd,EmbedBuilder}=require('../utils/commandTools');
-module.exports=cmd('avatar','عرض صورة العضو',d=>d.addUserOption(o=>o.setName('user').setDescription('العضو').setRequired(false)),async i=>{const u=i.options.getUser('user')||i.user;await i.reply({embeds:[new EmbedBuilder().setColor(0x5865f2).setTitle(`صورة ${u.username}`).setImage(u.displayAvatarURL({size:1024,extension:'png'}))]});});

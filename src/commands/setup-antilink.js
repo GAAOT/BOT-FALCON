@@ -1,2 +1,0 @@
-const {cmd,getSettings,requireManage}=require('../utils/commandTools');
-module.exports=cmd('setup-antilink','تشغيل أو إيقاف منع الروابط',d=>d.addBooleanOption(o=>o.setName('enabled').setDescription('تفعيل منع الروابط').setRequired(true)),async i=>{if(!requireManage(i))return i.reply({content:'تحتاج صلاحية إدارة السيرفر.',ephemeral:true});const s=await getSettings(i.guildId);s.antiLinkEnabled=i.options.getBoolean('enabled');await s.save();await i.reply({content:`تم ${s.antiLinkEnabled?'تفعيل':'إيقاف'} منع الروابط.`,ephemeral:true});});

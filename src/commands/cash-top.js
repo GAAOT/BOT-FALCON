@@ -1,2 +1,0 @@
-const {cmd,User,EmbedBuilder}=require('../utils/commandTools');
-module.exports=cmd('cash-top','أفضل 10 أعضاء حسب Cash العالمي',null,async i=>{const rows=await User.find({}).sort({credits:-1}).limit(10);const desc=rows.length?rows.map((u,n)=>`**${n+1}.** <@${u.userId}> — **${u.credits.toLocaleString()} Cash**`).join('\n'):'لا توجد أرصدة بعد.';await i.reply({embeds:[new EmbedBuilder().setColor(0xf1c40f).setTitle('🏆 أغنياء FALCON').setDescription(desc)]});});
